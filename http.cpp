@@ -5,6 +5,7 @@
 #include <vector>
 #include <unordered_map>
 #include <sstream>
+#include <sys/epoll.h>
 
 #include "http.h"
 
@@ -36,20 +37,54 @@ int HTTP::listenHttp(void) {
     if ((clientSockfd = tcp.listenNet(hostAddr, hostIp)) < 0)
         return 1;
 
+    /* Data structure in the kernel with the descriptors of interest */
+    int epollFd = epoll_create1(0);
+    if (epollFd < 0) {
+        perror("epoll");
+        return 1;
+    }
+
+    /* Add file descriptor of listener to epoll list */
+    struct epoll_event evt = {
+        { EPOLLIN },
+        { .fd = clientSockfd }
+    };
+    epoll_ctl(epollFd, EPOLL_CTL_ADD, clientSockfd, &evt);
+
     while (1) {
-        if ((conn = tcp.acceptNet(clientSockfd)) < 0)
-            continue;
-        req = new HTTPreq();
-        while(1) {
-            if ((n = tcp.recvNet(conn, buffer, BUF_SIZE)) < 0)
-                break;
-            req->parseRequest(buffer, n);
-            if (n != BUF_SIZE)
-                break;
+        int timeout = -1; /* Block forever */
+        errno = 0;
+        if (epoll_wait(epollFd, &evt, 1, timeout) < 1) {
+            if (errno == EINTR)
+                continue;
+            perror("select");
+            return 1;
         }
-        /* Analyze http request */
-        switchHttp(conn, req->path);
-        tcp.closeNet(conn);
+
+        if (evt.data.fd == clientSockfd) {
+            if ((conn = tcp.acceptNet(clientSockfd)) < 0)
+                continue;
+            req = new HTTPreq();
+
+            /* Add file descriptor of new connection to epoll list */
+            struct epoll_event evt = {
+                { EPOLLIN },
+                { .fd = conn }
+            };
+            epoll_ctl(epollFd, EPOLL_CTL_ADD, conn, &evt);
+        } else {
+            /* If it isn't listen socket - it's new connection socket */
+            while(1) {
+                if ((n = tcp.recvNet(conn, buffer, BUF_SIZE)) < 0)
+                    break;
+                req->parseRequest(buffer, n);
+                if (n != BUF_SIZE)
+                    break;
+            }
+            /* Analyze http request */
+            switchHttp(conn, req->path);
+            tcp.closeNet(conn);
+        }
     }
     
     tcp.closeNet(clientSockfd);
