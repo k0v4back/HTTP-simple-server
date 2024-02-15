@@ -16,11 +16,11 @@ int TCP::listenNet(std::string& ip, std::string& port) {
 
     /* Create server socket */
     if ((connect->clientSockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        return -1;
+        throw std::runtime_error("Failed to create socket");
     
     /* Check for the existence of such a socket in the system for reusing it */
     if (setsockopt(connect->clientSockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int)) < 0)
-        return -1;
+        throw std::runtime_error("Failed to set socket options");
     
     /* Fill local address structure */
     memset(&connect->clientAddress, 0, sizeof(connect->clientAddress));
@@ -31,11 +31,11 @@ int TCP::listenNet(std::string& ip, std::string& port) {
     /* Bind to the local address */
     if (bind(connect->clientSockfd, (struct sockaddr *)&connect->clientAddress,
             sizeof(connect->clientAddress)) < 0)
-        return -1;
+        throw std::runtime_error("Failed to bind to socket");
     
     /* Mark the socket so it will listen for incoming connections */
     if (listen(connect->clientSockfd, SOMAXCONN) < 0)
-        return -1;
+        throw std::runtime_error("Failed to listen on port");
     
     return connect->clientSockfd;
 }

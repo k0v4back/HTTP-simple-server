@@ -28,28 +28,26 @@ void HTTP::displayPage(int conn, std::string& file) {
 }
 
 int HTTP::listenHttp(void) {
-    int clientSockfd;
+    int serverSockfd;
     int conn;
     class HTTPreq* req;
     std::string buffer;
     size_t n;
     
-    if ((clientSockfd = tcp.listenNet(hostAddr, hostIp)) < 0)
-        return 1;
+    if ((serverSockfd = tcp.listenNet(hostAddr, hostIp)) < 0)
+        throw std::runtime_error("Failed to create server socket");
 
     /* Data structure in the kernel with the descriptors of interest */
     int epollFd = epoll_create1(0);
-    if (epollFd < 0) {
-        perror("epoll");
-        return 1;
-    }
+    if (epollFd < 0)
+        throw std::runtime_error("Failed to create epoll");
 
     /* Add file descriptor of listener to epoll list */
     struct epoll_event evt = {
         { EPOLLIN },
-        { .fd = clientSockfd }
+        { .fd = serverSockfd }
     };
-    epoll_ctl(epollFd, EPOLL_CTL_ADD, clientSockfd, &evt);
+    epoll_ctl(epollFd, EPOLL_CTL_ADD, serverSockfd, &evt);
 
     while (1) {
         int timeout = -1; /* Block forever */
@@ -57,12 +55,13 @@ int HTTP::listenHttp(void) {
         if (epoll_wait(epollFd, &evt, 1, timeout) < 1) {
             if (errno == EINTR)
                 continue;
-            perror("select");
+            perror("epoll_wait()");
             return 1;
         }
 
-        if (evt.data.fd == clientSockfd) {
-            if ((conn = tcp.acceptNet(clientSockfd)) < 0)
+        /* If it is listen socket - accept this connection */
+        if (evt.data.fd == serverSockfd) {
+            if ((conn = tcp.acceptNet(serverSockfd)) < 0)
                 continue;
             req = new HTTPreq();
 
@@ -87,7 +86,7 @@ int HTTP::listenHttp(void) {
         }
     }
     
-    tcp.closeNet(clientSockfd);
+    tcp.closeNet(serverSockfd);
 
     return 0;
 }

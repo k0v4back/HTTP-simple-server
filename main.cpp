@@ -21,7 +21,13 @@ int main() {
     print_hashmap(server->ht);
     std::cout << "hostAddr=" << server->hostAddr << std::endl;
 
-    server->listenHttp();
+
+    try {
+        server->listenHttp();
+    } catch (std::exception &ex) {
+        std::cerr << "An error occurred: " << ex.what() << std::endl;
+        return -1;
+    }
 
     return 0;
 }
