@@ -19,9 +19,18 @@
 #define _READ_PATH      1
 #define _READ_PROTO     2
 
+#define THREAD_NUM 8
+
 enum responseType {
     RESPONSE200 = 0,
     RESPONSE404 = 1
+};
+
+struct threadArgs {
+    int listenFd;
+    int epollFd;
+    class TCP* tcp;
+    class HTTP* http;
 };
 
 class HTTP {
@@ -35,6 +44,7 @@ public:
     void parseHtmlHttp(int conn, std::string& fileName, responseType rt);   /* Parse HTTP request for HTML page */
     int switchHttp(int conn, std::string& path);                            /* Analyze http request */
     void page404Http(int conn);                                             /* Display 404 */
+    static void* serverThread(void* args);                                         /* Server thread */
 
     std::string hostAddr;
     std::string hostIp;

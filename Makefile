@@ -10,7 +10,7 @@ CFLAGS = -Wall
 all: $(TARGET)	
 
 $(TARGET): $(OBJ)
-		$(CC) $^ -o $@
+		$(CC) $^ -pthread -o $@
 
 %.o: %.cpp
 		$(CC) -std=c++11 -c $< -o $@ $(CFLAGS)

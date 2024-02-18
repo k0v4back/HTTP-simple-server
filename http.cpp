@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <sstream>
 #include <sys/epoll.h>
+#include <pthread.h>
 
 #include "http.h"
 
@@ -29,10 +30,7 @@ void HTTP::displayPage(int conn, std::string& file) {
 
 int HTTP::listenHttp(void) {
     int serverSockfd;
-    int conn;
-    class HTTPreq* req;
-    std::string buffer;
-    size_t n;
+    pthread_t threads[THREAD_NUM];
     
     if ((serverSockfd = tcp.listenNet(hostAddr, hostIp)) < 0)
         throw std::runtime_error("Failed to create server socket");
@@ -42,6 +40,13 @@ int HTTP::listenHttp(void) {
     if (epollFd < 0)
         throw std::runtime_error("Failed to create epoll");
 
+    /* Arguments for each of threads */
+    struct threadArgs targs;
+    targs.epollFd = epollFd;
+    targs.listenFd = serverSockfd;
+    targs.tcp = &tcp;
+    targs.http = this;
+
     /* Add file descriptor of listener to epoll list */
     struct epoll_event evt = {
         { EPOLLIN },
@@ -49,44 +54,15 @@ int HTTP::listenHttp(void) {
     };
     epoll_ctl(epollFd, EPOLL_CTL_ADD, serverSockfd, &evt);
 
-    while (1) {
-        int timeout = -1; /* Block forever */
-        errno = 0;
-        if (epoll_wait(epollFd, &evt, 1, timeout) < 1) {
-            if (errno == EINTR)
-                continue;
-            perror("epoll_wait()");
-            return 1;
-        }
-
-        /* If it is listen socket - accept this connection */
-        if (evt.data.fd == serverSockfd) {
-            if ((conn = tcp.acceptNet(serverSockfd)) < 0)
-                continue;
-            req = new HTTPreq();
-
-            /* Add file descriptor of new connection to epoll list */
-            struct epoll_event evt = {
-                { EPOLLIN },
-                { .fd = conn }
-            };
-            epoll_ctl(epollFd, EPOLL_CTL_ADD, conn, &evt);
-        } else {
-            /* If it isn't listen socket - it's new connection socket */
-            while(1) {
-                if ((n = tcp.recvNet(conn, buffer, BUF_SIZE)) < 0)
-                    break;
-                req->parseRequest(buffer, n);
-                if (n != BUF_SIZE)
-                    break;
-            }
-            /* Analyze http request */
-            switchHttp(conn, req->path);
-            tcp.closeNet(conn);
+    /* Create poll of threads */
+    for (int i = 0; i < THREAD_NUM; ++i) {
+        if (pthread_create(&threads[i], NULL, &serverThread, &targs) < 0) {
+            fprintf(stderr, "error while creating %d thread\n", i);
+            exit(1);
         }
     }
-    
-    tcp.closeNet(serverSockfd);
+
+    serverThread(&targs);
 
     return 0;
 }
@@ -220,4 +196,56 @@ int HTTP::switchHttp(int conn, std::string& path) {
 void HTTP::page404Http(int conn) {
     std::string page_name = "page404.html";
     parseHtmlHttp(conn, page_name, RESPONSE404);
+}
+
+
+void* HTTP::serverThread(void* args) {
+    struct epoll_event evt;
+    int epollFd = ((struct threadArgs*)args)->epollFd;
+    int listenFd = ((struct threadArgs*)args)->listenFd;
+    class TCP* tcp = ((struct threadArgs*)args)->tcp;
+    class HTTP* http = ((struct threadArgs*)args)->http;
+    class HTTPreq* req;
+    std::string buffer;
+    size_t n;
+    int conn;
+
+    while (1) {
+        int timeout = -1; /* Block forever */
+        errno = 0;
+        if (epoll_wait(epollFd, &evt, 1, timeout) < 1) {
+            if (errno == EINTR)
+                continue;
+            perror("epoll_wait()");
+            //return 1;
+        }
+
+        /* If it is listen socket - accept this connection */
+        if (evt.data.fd == listenFd) {
+            if ((conn = tcp->acceptNet(listenFd)) < 0)
+                continue;
+            req = new HTTPreq();
+
+            /* Add file descriptor of new connection to epoll list */
+            struct epoll_event evt = {
+                { EPOLLIN },
+                { .fd = conn }
+            };
+            epoll_ctl(epollFd, EPOLL_CTL_ADD, conn, &evt);
+        } else {
+            /* If it isn't listen socket - it's new connection socket */
+            while(1) {
+                if ((n = tcp->recvNet(conn, buffer, BUF_SIZE)) < 0)
+                    break;
+                req->parseRequest(buffer, n);
+                if (n != BUF_SIZE)
+                    break;
+            }
+            /* Analyze http request */
+            http->switchHttp(conn, req->path);
+            tcp->closeNet(conn);
+        }
+    }
+
+    tcp->closeNet(listenFd);
 }
