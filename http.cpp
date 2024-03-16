@@ -19,12 +19,24 @@ HTTP::HTTP(std::string addr, std::string ip) {
     hostIp = ip;
 }
 
+std::string HTTP::getHostAddr() const {
+    return hostAddr;
+}
+
+std::string HTTP::getHostIp() const {
+    return hostIp;
+}
+
+std::unordered_map<std::string, std::string> const& HTTP::getHT() const {
+    return ht;
+}
+
 void HTTP::handleHttp(std::string addr, std::string file) {
     ht[addr] = file;
 }
 
 void HTTP::displayPage(int conn, std::string& file) {
-    parseHtmlHttp(conn, file, RESPONSE200);
+    HTTPResponse(conn, file, RESPONSE200);
 }
 
 int HTTP::listenHttp(void) {
@@ -91,7 +103,7 @@ int HTTP::listenHttp(void) {
     return 0;
 }
 
-void HTTP::parseHtmlHttp(int conn, std::string& fileName, responseType rt) {
+void HTTP::HTTPResponse(int conn, std::string& fileName, responseType rt) {
     std::string response_body;
     std::string file_path;
     std::stringstream response;
@@ -139,11 +151,12 @@ void HTTP::parseHtmlHttp(int conn, std::string& fileName, responseType rt) {
 }
 
 void HTTP::HTTPreq::parseRequest(std::string& buffer, size_t size) {
-    size_t i = 0;
+    size_t index = 0;
+    size_t state = 0;
 
     std::cout << buffer.data() << std::endl;
 
-    for (i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
         switch (state) {
         case _READ_METHOD:
             if (buffer[i] == ' ' || index == METHOD_SIZE - 1) {
@@ -219,5 +232,5 @@ int HTTP::switchHttp(int conn, std::string& path) {
 
 void HTTP::page404Http(int conn) {
     std::string page_name = "page404.html";
-    parseHtmlHttp(conn, page_name, RESPONSE404);
+    HTTPResponse(conn, page_name, RESPONSE404);
 }

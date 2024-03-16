@@ -18,8 +18,8 @@ int main() {
     server->handleHttp("/about", "about.html");
 
     /* For debug */
-    print_hashmap(server->ht);
-    std::cout << "hostAddr=" << server->hostAddr << std::endl;
+    print_hashmap(server->getHT());
+    std::cout << "hostAddr=" << server->getHostAddr() << std::endl;
 
 
     try {

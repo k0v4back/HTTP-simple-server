@@ -1,5 +1,4 @@
-#ifndef _TCP_H_
-#define _TCP_H_
+#pragma once
 
 #include <iostream>
 #include <arpa/inet.h>
@@ -28,5 +27,3 @@ public:
     int sendNet(int conn, const std::string& buffer);           /* Send request */
     int recvNet(int conn, std::string& buffer, size_t size);    /* Recive */
 };
-
-#endif /* _TCP_H_ */
