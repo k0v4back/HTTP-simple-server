@@ -4,6 +4,7 @@
 
 #include "request.h"
 #include "http_parser.h"
+#include "header.h"
 
 std::string Request::serialize() const {
     std::string request;
@@ -21,7 +22,7 @@ std::string Request::serialize() const {
     return request;
 }
 
-static Request deserialize(const std::string& request) {
+Request Request::deserialize(const std::string& request) {
     std::vector<std::string> lines = split(request, std::string(LINE_END));
 
     if (lines.size() < 1)

@@ -16,6 +16,7 @@ int main() {
 
     server->handleHttp("/", "index.html");
     server->handleHttp("/about", "about.html");
+    server->handleHttp("/favicon.ico", "../icons/favicon.ico");
 
     /* For debug */
     print_hashmap(server->getHT());

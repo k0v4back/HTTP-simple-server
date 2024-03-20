@@ -23,7 +23,7 @@ std::string Header::serialize() const {
     return header;
 }
 
-static Header deserialize(const std::string& header) {
+Header Header::deserialize(const std::string& header) {
     std::vector<std::string> segments = split(header, " ");
 
     const std::string key = segments[0].substr(0, segments[0].size() - 1);

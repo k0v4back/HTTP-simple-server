@@ -6,8 +6,7 @@
 #include "header.h"
 #include "http_parser.h"
 
-class Request
-{
+class Request {
 private:
     HTTPVersion version;
     HTTPMethod method;

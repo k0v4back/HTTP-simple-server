@@ -79,7 +79,7 @@ std::vector<std::string> split(const std::string& str, const std::string& key) {
     return tokens;
 }
 
-std::string concat(const std::vector<std::string>& strings, const std::string& key = "") {
+std::string concat(const std::vector<std::string>& strings, const std::string& key) {
     std::string result;
 
     for (std::size_t i = 0; i < strings.size(); i++) {

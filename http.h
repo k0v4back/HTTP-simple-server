@@ -26,14 +26,13 @@ enum responseType {
 class HTTP {
 private:
     std::string hostAddr;
-    std::string hostIp;
+    std::string hostPort;
     std::unordered_map<std::string, std::string> ht;
 public:
-    HTTP();
     HTTP(std::string addr, std::string ip);
 
     std::string getHostAddr() const;
-    std::string getHostIp() const;
+    std::string getHostPort() const;
     std::unordered_map<std::string, std::string> const& getHT() const;
 
     void handleHttp(std::string addr, std::string file);                    /* Fill hash table */

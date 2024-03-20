@@ -9,22 +9,17 @@
 
 #include "http.h"
 
-HTTP::HTTP() {
-    hostAddr = "127.0.0.1";
-    hostIp = "5555";
-}
-
-HTTP::HTTP(std::string addr, std::string ip) {
+HTTP::HTTP(std::string addr = "127.0.0.1", std::string port = "80") {
     hostAddr = addr;
-    hostIp = ip;
+    hostPort = port;
 }
 
 std::string HTTP::getHostAddr() const {
     return hostAddr;
 }
 
-std::string HTTP::getHostIp() const {
-    return hostIp;
+std::string HTTP::getHostPort() const {
+    return hostPort;
 }
 
 std::unordered_map<std::string, std::string> const& HTTP::getHT() const {
@@ -46,7 +41,7 @@ int HTTP::listenHttp(void) {
     std::string buffer;
     size_t n;
     
-    if ((serverSockfd = tcp.listenNet(hostAddr, hostIp)) < 0)
+    if ((serverSockfd = tcp.listenNet(hostAddr, hostPort)) < 0)
         throw std::runtime_error("Failed to create server socket");
 
     /* Data structure in the kernel with the descriptors of interest */
@@ -154,7 +149,7 @@ void HTTP::HTTPreq::parseRequest(std::string& buffer, size_t size) {
     size_t index = 0;
     size_t state = 0;
 
-    std::cout << buffer.data() << std::endl;
+    //std::cout << buffer.data() << std::endl;
 
     for (size_t i = 0; i < size; i++) {
         switch (state) {
@@ -225,7 +220,7 @@ int HTTP::switchHttp(int conn, std::string& path) {
     }
 
     /* Calling the page display function */
-     displayPage(conn, ht.at(path));
+    displayPage(conn, ht.at(path));
     
     return 0;
 }
