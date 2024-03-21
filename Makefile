@@ -13,7 +13,7 @@ $(TARGET): $(OBJ)
 		$(CC) $^ -o $@
 
 %.o: %.cpp
-		$(CC) -std=c++11 -c $< -o $@ $(CFLAGS)
+		$(CC) -std=c++11 -g -c $< -o $@ $(CFLAGS)
 
 clean:
 		rm -f $(GENERAT)

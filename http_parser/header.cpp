@@ -5,7 +5,7 @@
 #include "header.h"
 #include "http_parser.h"
 
-void Header::set_value (const std::string& value) {
+void Header::set_value(const std::string& value) {
     this->value = value;
 }
 

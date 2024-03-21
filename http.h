@@ -29,21 +29,6 @@ private:
     std::string hostPort;
     std::unordered_map<std::string, std::string> ht;
 public:
-    HTTP(std::string addr, std::string ip);
-
-    std::string getHostAddr() const;
-    std::string getHostPort() const;
-    std::unordered_map<std::string, std::string> const& getHT() const;
-
-    void handleHttp(std::string addr, std::string file);                    /* Fill hash table */
-    void displayPage(int conn, std::string& file);                          /* Display HTML page requested by user */
-    int listenHttp(void);                                                   /* Listen client requests */
-    void HTTPResponse(int conn, std::string& fileName, responseType rt);    /* Parse HTTP request for HTML page */
-    int switchHttp(int conn, std::string& path);                            /* Analyze http request */
-    void page404Http(int conn);                                             /* Display 404 */
-
-    TCP tcp;
-
     class HTTPreq {
     public:
         std::string method;
@@ -52,4 +37,19 @@ public:
 
         void parseRequest(std::string& buffer, size_t size);    /* Parse HTTP request from client */
     };
+
+    HTTP(std::string addr, std::string ip);
+
+    std::string getHostAddr() const;
+    std::string getHostPort() const;
+    std::unordered_map<std::string, std::string> const& getHT() const;
+
+    void handleHttp(std::string addr, std::string file);                                    /* Fill hash table */
+    void displayPage(int conn, std::string& file, HTTPreq* req);                            /* Display HTML page requested by user */
+    int listenHttp(void);                                                                   /* Listen client requests */
+    void HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPreq* req);      /* Parse HTTP request for HTML page */
+    int switchHttp(int conn, HTTPreq* req);                                                 /* Analyze http request */
+    void page404Http(int conn, HTTPreq* req);                                               /* Display 404 */
+
+    TCP tcp;
 };
