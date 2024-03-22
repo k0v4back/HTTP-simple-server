@@ -29,7 +29,7 @@ private:
     std::string hostPort;
     std::unordered_map<std::string, std::string> ht;
 public:
-    class HTTPreq {
+    class HTTPresp {
     public:
         std::string method;
         std::string path;
@@ -45,11 +45,11 @@ public:
     std::unordered_map<std::string, std::string> const& getHT() const;
 
     void handleHttp(std::string addr, std::string file);                                    /* Fill hash table */
-    void displayPage(int conn, std::string& file, HTTPreq* req);                            /* Display HTML page requested by user */
+    void displayPage(int conn, std::string& file, HTTPresp* req);                            /* Display HTML page requested by user */
     int listenHttp(void);                                                                   /* Listen client requests */
-    void HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPreq* req);      /* Parse HTTP request for HTML page */
-    int switchHttp(int conn, HTTPreq* req);                                                 /* Analyze http request */
-    void page404Http(int conn, HTTPreq* req);                                               /* Display 404 */
+    void HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPresp* req);      /* Parse HTTP request for HTML page */
+    int switchHttp(int conn, HTTPresp* req);                                                 /* Analyze http request */
+    void page404Http(int conn, HTTPresp* req);                                               /* Display 404 */
 
     TCP tcp;
 };

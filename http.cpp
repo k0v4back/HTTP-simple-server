@@ -10,7 +10,6 @@
 #include <fstream>
 
 #include "http.h"
-#include "http_parser/header.h"
 #include "http_parser/response.h"
 
 HTTP::HTTP(std::string addr = "127.0.0.1", std::string port = "80") {
@@ -34,14 +33,14 @@ void HTTP::handleHttp(std::string addr, std::string file) {
     ht[addr] = file;
 }
 
-void HTTP::displayPage(int conn, std::string& file, HTTPreq* req) {
-    HTTPResponse(conn, file, RESPONSE200, req);
+void HTTP::displayPage(int conn, std::string& file, HTTPresp* resp) {
+    HTTPResponse(conn, file, RESPONSE200, resp);
 }
 
 int HTTP::listenHttp(void) {
     int serverSockfd;
     int conn;
-    class HTTPreq* req;
+    class HTTPresp* resp;
     std::string buffer;
     size_t n;
     
@@ -74,7 +73,7 @@ int HTTP::listenHttp(void) {
         if (evt.data.fd == serverSockfd) {
             if ((conn = tcp.acceptNet(serverSockfd)) < 0)
                 continue;
-            req = new HTTPreq();
+            resp = new HTTPresp();
 
             /* Add file descriptor of new connection to epoll list */
             struct epoll_event evt = {
@@ -87,12 +86,12 @@ int HTTP::listenHttp(void) {
             while(1) {
                 if ((n = tcp.recvNet(conn, buffer, BUF_SIZE)) < 0)
                     break;
-                req->parseRequest(buffer, n);
+                resp->parseRequest(buffer, n);
                 if (n != BUF_SIZE)
                     break;
             }
             /* Analyze http request */
-            switchHttp(conn, req);
+            switchHttp(conn, resp);
             tcp.closeNet(conn);
         }
     }
@@ -102,27 +101,12 @@ int HTTP::listenHttp(void) {
     return 0;
 }
 
-void HTTP::HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPreq* req) {
+void HTTP::HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPresp* resp) {
     std::string response_body;
     std::string file_path;
     std::stringstream response;
     size_t read_size;
     FILE *file;
-
-    /*
-    std::cout << "method: " << req->method << std::endl;
-    std::cout << "path: " << req->path << std::endl;
-    std::cout << "proto: " << req->proto << std::endl;
-
-    Header hostHeader = Header("Host", hostAddr);
-    Header dntHeader = Header("DNT", "1");
-
-    std::map<std::string, Header> headers;
-    headers.insert(std::make_pair(hostHeader.get_key(), hostHeader));
-    headers.insert(std::make_pair(dntHeader.get_key(), dntHeader));
-    */
-
-    //Response resp = Response::deserialize(std::string);
 
     file_path = "html/" + fileName;
 
@@ -164,56 +148,30 @@ void HTTP::HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPre
     fclose(file);
 }
 
-void HTTP::HTTPreq::parseRequest(std::string& buffer, size_t size) {
+void HTTP::HTTPresp::parseRequest(std::string& buffer, size_t size) {
     //std::cout << buffer.data() << std::endl;
 
     Response response = Response::deserialize(buffer.data());
 
     method = response.getMethod();
     path = response.getPath();
-    proto = response.getPath();
+    proto = response.getProto();
 }
 
-int HTTP::switchHttp(int conn, HTTPreq* req) {
-    int index;
-    std::string path = req->path;
-    auto iter = ht.find(path);
-
+int HTTP::switchHttp(int conn, HTTPresp* resp) {
     std::string buffer;
 
+    auto iter = ht.find(resp->path);
     if (iter == ht.end()) {
-        buffer = path;
-
-        if ((index = strlen(path.c_str())) == 0) {
-            page404Http(conn, req);
-            return 1;
-        }
-
-        index -= 1;
-        buffer[index] = '\0';
-        for (; index > 0 && buffer[index] != '/'; --index) {
-            buffer[index] = '\0';
-        }
-
-        iter = ht.find(buffer);
-        if (iter == ht.end()) {
-            page404Http(conn, req);
-            return 2;
-        }
-
-        /* Calling the page display function */
-        page404Http(conn, req);
-
+        page404Http(conn, resp);
         return 0;
     }
 
-    /* Calling the page display function */
-    displayPage(conn, ht.at(path), req);
-    
+    displayPage(conn, ht.at(resp->path), resp);
     return 0;
 }
 
-void HTTP::page404Http(int conn, HTTPreq* req) {
+void HTTP::page404Http(int conn, HTTPresp* resp) {
     std::string page_name = "page404.html";
-    HTTPResponse(conn, page_name, RESPONSE404, req);
+    HTTPResponse(conn, page_name, RESPONSE404, resp);
 }

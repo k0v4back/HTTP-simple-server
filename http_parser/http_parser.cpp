@@ -19,6 +19,7 @@ std::string FromHTTPMethodToString(HTTPMethod method) {
         return "DELETE";
         break;
     default:
+        throw std::runtime_error("Failed to convert required HTTP method to string");
         break;
     }
 }
@@ -35,6 +36,7 @@ std::string FromHTTPVerstionToString(HTTPVersion version) {
         return "HTTP/2.0";
         break;
     default:
+        throw std::runtime_error("Failed to convert required HTTP protocol to string");
         break;
     }
 }
@@ -48,6 +50,8 @@ HTTPMethod HTTPMethodFromString(const std::string& method) {
         return HTTPMethod::PUT;
     else if (method == FromHTTPMethodToString(HTTPMethod::DELETE))
         return HTTPMethod::DELETE;
+
+    throw std::runtime_error("Failed to convert required HTTP method from string");
 }
 
 HTTPVersion HTTPVersionFromString(const std::string& version) {
@@ -57,6 +61,8 @@ HTTPVersion HTTPVersionFromString(const std::string& version) {
         return HTTPVersion::HTTP_1_1;
     if (version == FromHTTPVerstionToString(HTTPVersion::HTTP_2_0))
         return HTTPVersion::HTTP_2_0;
+
+    throw std::runtime_error("Failed to convert required HTTP protocol from string");
 }
 
 std::vector<std::string> split(const std::string& str, const std::string& key) {

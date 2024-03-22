@@ -5,14 +5,11 @@
 #include <string>
 #include <map>
 
-#include "header.h"
 #include "http_parser.h"
 
 class Response {
 private:
-    int responseCode;
     HTTPVersion httpVersion;
-    std::map<std::string, Header> headers;
     std::string body;
 
     std::string method;
@@ -32,9 +29,9 @@ public:
     constexpr static int BAD_GATEWAY = 502;
     constexpr static int SERVICE_UNAVAILABLE = 503;
 
-    Response(int responseCode, HTTPVersion httpVersion, const std::map<std::string, Header>& headers,
-        const std::string& body, std::string method, std::string path, std::string proto)
-        : responseCode(responseCode), headers(headers), body(body), method(method), path(path), proto(proto) {}
+    Response(HTTPVersion httpVersion, const std::string& body,
+        std::string method, std::string path, std::string proto)
+        : body(body), method(method), path(path), proto(proto) {}
 
     int getResponseCode() const;
     const std::string& getBody() const;
@@ -43,6 +40,5 @@ public:
     const std::string& getPath() const;
     const std::string& getProto() const;
 
-    const std::map<std::string, Header> getHeaders() const;
     static Response deserialize(const std::string& response);
 };
