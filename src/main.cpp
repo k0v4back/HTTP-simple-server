@@ -22,7 +22,6 @@ int main() {
     print_hashmap(server->getHT());
     std::cout << "hostAddr=" << server->getHostAddr() << std::endl;
 
-
     try {
         server->listenHttp();
     } catch (std::exception &ex) {

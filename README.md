@@ -4,10 +4,11 @@ A simple http server written for the purpose of learning C++ and working with th
 
 ## Compile
 
-Type in root folder
-
 ```bash
-make all
+mkdir build
+cd build
+cmake ../
+cmake --build .
 ```
 
 ## Run
