@@ -10,6 +10,7 @@
 
 #include "http.h"
 #include "http_parser/response.h"
+#include "../libs/Thread-pool/src/thread_pool.h"
 
 HTTP::HTTP(std::string addr = "127.0.0.1", std::string port = "80") {
     hostAddr = addr;
@@ -42,6 +43,7 @@ int HTTP::listenHttp(void) {
     class HTTPresp* resp;
     std::string buffer;
     size_t n;
+    tp::ThreadPoll threadPool {5}; //Create 5 threads in thread pool
     
     if ((serverSockfd = tcp.listenNet(hostAddr, hostPort)) < 0)
         return 1;
@@ -49,18 +51,22 @@ int HTTP::listenHttp(void) {
     while (1) {
         if ((conn = tcp.acceptNet(serverSockfd)) < 0)
             continue;
-        resp = new HTTPresp();
-        while(1) {
-            if ((n = tcp.recvNet(conn, buffer, BUF_SIZE)) < 0)
-                break;
-            resp->parseRequest(buffer, n);
-            if (n != BUF_SIZE)
-                break;
-        }
-        /* Analyze http request */
-        switchHttp(conn, resp);
-        tcp.closeNet(conn);
+        threadPool.Submit([&]() {
+            resp = new HTTPresp();
+            while(1) {
+                if ((n = tcp.recvNet(conn, buffer, BUF_SIZE)) < 0)
+                    break;
+                resp->parseRequest(buffer, n);
+                if (n != BUF_SIZE)
+                    break;
+            }
+            /* Analyze http request */
+            switchHttp(conn, resp);
+            tcp.closeNet(conn);
+        });
     }
+
+    threadPool.WaitAll();
     
     tcp.closeNet(serverSockfd);
 
