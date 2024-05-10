@@ -1,0 +1,6 @@
+[submodule "src/Thread-pool"]
+	path = src/Thread-pool
+	url = https://github.com/k0v4back/Thread-pool
+[submodule "libs/Thread-pool"]
+	path = libs/Thread-pool
+	url = https://github.com/k0v4back/Thread-pool
