@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <map>
 #include <sstream>
-#include <sys/epoll.h>
 #include <fstream>
 
 #include "http.h"
@@ -45,55 +44,22 @@ int HTTP::listenHttp(void) {
     size_t n;
     
     if ((serverSockfd = tcp.listenNet(hostAddr, hostPort)) < 0)
-        throw std::runtime_error("Failed to create server socket");
-
-    /* Data structure in the kernel with the descriptors of interest */
-    int epollFd = epoll_create1(0);
-    if (epollFd < 0)
-        throw std::runtime_error("Failed to create epoll");
-
-    /* Add file descriptor of listener to epoll list */
-    struct epoll_event evt = {
-        { EPOLLIN },
-        { .fd = serverSockfd }
-    };
-    epoll_ctl(epollFd, EPOLL_CTL_ADD, serverSockfd, &evt);
+        return 1;
 
     while (1) {
-        int timeout = -1; /* Block forever */
-        errno = 0;
-        if (epoll_wait(epollFd, &evt, 1, timeout) < 1) {
-            if (errno == EINTR)
-                continue;
-            perror("epoll_wait()");
-            return 1;
+        if ((conn = tcp.acceptNet(serverSockfd)) < 0)
+            continue;
+        resp = new HTTPresp();
+        while(1) {
+            if ((n = tcp.recvNet(conn, buffer, BUF_SIZE)) < 0)
+                break;
+            resp->parseRequest(buffer, n);
+            if (n != BUF_SIZE)
+                break;
         }
-
-        /* If it is listen socket - accept this connection */
-        if (evt.data.fd == serverSockfd) {
-            if ((conn = tcp.acceptNet(serverSockfd)) < 0)
-                continue;
-            resp = new HTTPresp();
-
-            /* Add file descriptor of new connection to epoll list */
-            struct epoll_event evt = {
-                { EPOLLIN },
-                { .fd = conn }
-            };
-            epoll_ctl(epollFd, EPOLL_CTL_ADD, conn, &evt);
-        } else {
-            /* If it isn't listen socket - it's new connection socket */
-            while(1) {
-                if ((n = tcp.recvNet(conn, buffer, BUF_SIZE)) < 0)
-                    break;
-                resp->parseRequest(buffer, n);
-                if (n != BUF_SIZE)
-                    break;
-            }
-            /* Analyze http request */
-            switchHttp(conn, resp);
-            tcp.closeNet(conn);
-        }
+        /* Analyze http request */
+        switchHttp(conn, resp);
+        tcp.closeNet(conn);
     }
     
     tcp.closeNet(serverSockfd);
@@ -108,7 +74,7 @@ void HTTP::HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPre
     size_t read_size;
     FILE *file;
 
-    file_path = "html/" + fileName;
+    file_path = "../src/html/" + fileName;
 
     /* Opening the HTML page requested by the client */
     if ((file = fopen(file_path.c_str(), "r")) == 0)
@@ -149,7 +115,7 @@ void HTTP::HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPre
 }
 
 void HTTP::HTTPresp::parseRequest(std::string& buffer, size_t size) {
-    //std::cout << buffer.data() << std::endl;
+    // std::cout << buffer.data() << std::endl;
 
     Response response = Response::deserialize(buffer.data());
 
