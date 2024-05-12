@@ -7,10 +7,10 @@
 #include <map>
 #include <sstream>
 #include <fstream>
+#include <sys/epoll.h>
 
 #include "http.h"
 #include "http_parser/response.h"
-#include "../libs/Thread-pool/src/thread_pool.h"
 
 HTTP::HTTP(std::string addr = "127.0.0.1", std::string port = "80") {
     hostAddr = addr;
@@ -37,22 +37,53 @@ void HTTP::displayPage(int conn, std::string& file, HTTPresp* resp) {
     HTTPResponse(conn, file, RESPONSE200, resp);
 }
 
-int HTTP::listenHttp(void) {
+int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
     int serverSockfd;
     int conn;
     class HTTPresp* resp;
     std::string buffer;
     size_t n;
-    tp::ThreadPoll threadPool {5}; //Create 5 threads in thread pool
-    
-    if ((serverSockfd = tcp.listenNet(hostAddr, hostPort)) < 0)
-        return 1;
+    int counter = 0;
 
-    while (1) {
-        if ((conn = tcp.acceptNet(serverSockfd)) < 0)
-            continue;
-        threadPool.Submit([&]() {
+    if ((serverSockfd = tcp.listenNet(hostAddr, hostPort)) < 0)
+        throw std::runtime_error("Failed to create server socket");
+
+    /* Data structure in the kernel with the descriptors of interest */
+    int epollFd = epoll_create1(0);
+    if (epollFd < 0)
+        throw std::runtime_error("Failed to create epoll");
+
+    /* Add file descriptor of listener to epoll list */
+    struct epoll_event evt = {
+        { EPOLLIN },
+        { .fd = serverSockfd }
+    };
+    epoll_ctl(epollFd, EPOLL_CTL_ADD, serverSockfd, &evt);
+
+     while (1) {
+        int timeout = -1; /* Block forever */
+        errno = 0;
+        if (epoll_wait(epollFd, &evt, 1, timeout) < 1) {
+            if (errno == EINTR)
+                continue;
+            perror("epoll_wait()");
+            return 1;
+        }
+
+        /* If it is listen socket - accept this connection */
+        if (evt.data.fd == serverSockfd) {
+            if ((conn = tcp.acceptNet(serverSockfd)) < 0)
+                continue;
             resp = new HTTPresp();
+
+            /* Add file descriptor of new connection to epoll list */
+            struct epoll_event evt = {
+                { EPOLLIN },
+                { .fd = conn }
+            };
+            epoll_ctl(epollFd, EPOLL_CTL_ADD, conn, &evt);
+        } else {
+            /* If it isn't listen socket - it's new connection socket */
             while(1) {
                 if ((n = tcp.recvNet(conn, buffer, BUF_SIZE)) < 0)
                     break;
@@ -61,14 +92,29 @@ int HTTP::listenHttp(void) {
                     break;
             }
             /* Analyze http request */
+            // std::cout << 0 << std::endl;
+            // switchHttp(conn, resp);
+            // std::cout << 1 << std::endl;
+            // tcp.closeNet(conn);
+            // std::cout << 2 << std::endl;
+
+            // std::cout << 0 << std::endl;
+            // threadPool.Submit([&]() {
+            //     std::cout << 1 << std::endl;
+            //     switchHttp(conn, resp);
+            //     std::cout << 2 << std::endl;
+            //     tcp.closeNet(conn);
+            //     std::cout << 3 << std::endl;
+            // });
+
             switchHttp(conn, resp);
             tcp.closeNet(conn);
-        });
+        }
     }
-
-    threadPool.WaitAll();
     
+    // std::cout << 3 << std::endl;
     tcp.closeNet(serverSockfd);
+    // std::cout << 4 << std::endl;
 
     return 0;
 }

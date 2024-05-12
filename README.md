@@ -2,6 +2,13 @@
 
 A simple http server written for the purpose of learning C++ and working with the network
 
+## Clone
+
+```bash
+git clone --recursive
+git submodule update --remote
+```
+
 ## Compile
 
 ```bash

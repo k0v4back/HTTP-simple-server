@@ -5,8 +5,10 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <mutex>
 
 #include "tcp.h"
+#include "../libs/Thread-pool/src/thread_pool.h"
 
 #define METHOD_SIZE 16
 #define PATH_SIZE 2048
@@ -45,11 +47,11 @@ public:
     std::unordered_map<std::string, std::string> const& getHT() const;
 
     void handleHttp(std::string addr, std::string file);                                    /* Fill hash table */
-    void displayPage(int conn, std::string& file, HTTPresp* req);                            /* Display HTML page requested by user */
-    int listenHttp(void);                                                                   /* Listen client requests */
-    void HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPresp* req);      /* Parse HTTP request for HTML page */
-    int switchHttp(int conn, HTTPresp* req);                                                 /* Analyze http request */
-    void page404Http(int conn, HTTPresp* req);                                               /* Display 404 */
+    void displayPage(int conn, std::string& file, HTTPresp* req);                           /* Display HTML page requested by user */
+    int listenHttp(tp::ThreadPoll& threadPool);                                             /* Listen client requests */
+    void HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPresp* req);     /* Parse HTTP request for HTML page */
+    int switchHttp(int conn, HTTPresp* req);                                                /* Analyze http request */
+    void page404Http(int conn, HTTPresp* req);                                              /* Display 404 */
 
     TCP tcp;
 };
