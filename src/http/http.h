@@ -7,14 +7,14 @@
 #include <vector>
 #include <mutex>
 
-#include "tcp.h"
-#include "../libs/Thread-pool/src/thread_pool.h"
+#include "../tcp/tcp.h"
+#include "../../libs/Thread-pool/src/thread_pool.h"
 
 #define METHOD_SIZE 16
 #define PATH_SIZE 2048
 #define PROTO_SIZE 16
 
-#define BUF_SIZE 1024
+#define BUF_SIZE 1024 * 1024
 
 #define _READ_METHOD    0
 #define _READ_PATH      1

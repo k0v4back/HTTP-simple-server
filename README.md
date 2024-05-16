@@ -5,8 +5,8 @@ A simple http server written for the purpose of learning C++ and working with th
 ## Clone
 
 ```bash
-git clone --recursive
-git submodule update --remote
+git clone
+git submodule update --init --recursive
 ```
 
 ## Compile

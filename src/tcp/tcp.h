@@ -18,8 +18,6 @@ public:
         int error;
     };
 
-    std::list<class acceptedSocket> listAcceptedSocket;
-
     int listenNet(std::string& ip, std::string& port);  /* Start server */
     int acceptNet(int listenServerSocket);              /* Accept connections by server */
     int closeNet(int conn);                             /* Server or client close connection */

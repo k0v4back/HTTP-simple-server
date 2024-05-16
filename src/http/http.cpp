@@ -10,7 +10,7 @@
 #include <sys/epoll.h>
 
 #include "http.h"
-#include "http_parser/response.h"
+#include "../response/response.h"
 
 HTTP::HTTP(std::string addr = "127.0.0.1", std::string port = "80") {
     hostAddr = addr;
@@ -42,7 +42,7 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
     int conn;
     class HTTPresp* resp;
     std::string buffer;
-    size_t n;
+    size_t n = 0;
     int counter = 0;
 
     if ((serverSockfd = tcp.listenNet(hostAddr, hostPort)) < 0)
@@ -85,11 +85,12 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
         } else {
             /* If it isn't listen socket - it's new connection socket */
             while(1) {
-                if ((n = tcp.recvNet(conn, buffer, BUF_SIZE)) < 0)
+                n = tcp.recvNet(conn, buffer, BUF_SIZE);
+                if (n > BUF_SIZE || n < 0)
                     break;
+
                 resp->parseRequest(buffer, n);
-                if (n != BUF_SIZE)
-                    break;
+                break;
             }
             /* Analyze http request */
             // std::cout << 0 << std::endl;
@@ -167,13 +168,15 @@ void HTTP::HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPre
 }
 
 void HTTP::HTTPresp::parseRequest(std::string& buffer, size_t size) {
-    // std::cout << buffer.data() << std::endl;
+    std::cout << buffer.data() << std::endl;
 
     Response response = Response::deserialize(buffer.data());
 
     method = response.getMethod();
     path = response.getPath();
     proto = response.getProto();
+
+    std::cout << "method = " << method << " path = " << path << " proto = " << proto << std::endl;
 }
 
 int HTTP::switchHttp(int conn, HTTPresp* resp) {

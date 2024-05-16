@@ -1,0 +1,13 @@
+add_library(response "")
+
+target_sources(response
+  PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/response.cpp
+  PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/response.h
+  )
+
+target_include_directories(response
+  PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}
+  )

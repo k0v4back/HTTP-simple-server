@@ -12,7 +12,6 @@ int TCP::listenNet(std::string& ip, std::string& port) {
 
     /* Create new connection and add to linked list */
     struct acceptedSocket* connect = new acceptedSocket;
-    listAcceptedSocket.push_back(*connect);
 
     /* Create server socket */
     if ((connect->clientSockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
