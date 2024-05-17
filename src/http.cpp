@@ -10,7 +10,7 @@
 #include <sys/epoll.h>
 
 #include "http.h"
-#include "../response/response.h"
+#include "http_parser/response.h"
 
 HTTP::HTTP(std::string addr = "127.0.0.1", std::string port = "80") {
     hostAddr = addr;
@@ -168,7 +168,7 @@ void HTTP::HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPre
 }
 
 void HTTP::HTTPresp::parseRequest(std::string& buffer, size_t size) {
-    std::cout << buffer.data() << std::endl;
+    // std::cout << buffer.data() << std::endl;
 
     Response response = Response::deserialize(buffer.data());
 

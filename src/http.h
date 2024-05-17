@@ -7,8 +7,8 @@
 #include <vector>
 #include <mutex>
 
-#include "../tcp/tcp.h"
-#include "../../libs/Thread-pool/src/thread_pool.h"
+#include "tcp.h"
+#include "../libs/Thread-pool/src/thread_pool.h"
 
 #define METHOD_SIZE 16
 #define PATH_SIZE 2048
