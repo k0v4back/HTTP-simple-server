@@ -21,8 +21,18 @@
 #define _READ_PROTO     2
 
 enum responseType {
-    RESPONSE200 = 0,
-    RESPONSE404 = 1
+    RESPONSE_200,
+    RESPONSE_404
+};
+
+enum contentType {
+    CONTENT_GIF,
+    CONTENT_JPEG,
+    CONTENT_PNG,
+    CONTENT_ICON,
+    CONTENT_CSV,
+    CONTENT_HTML,
+    CONTENT_XML
 };
 
 class HTTP {
@@ -30,12 +40,16 @@ private:
     std::string hostAddr;
     std::string hostPort;
     std::unordered_map<std::string, std::string> ht;
+
 public:
     class HTTPresp {
     public:
         std::string method;
         std::string path;
         std::string proto;
+
+        responseType rt;
+        contentType ct;
 
         void parseRequest(std::string& buffer, size_t size);    /* Parse HTTP request from client */
     };
@@ -46,12 +60,15 @@ public:
     std::string getHostPort() const;
     std::unordered_map<std::string, std::string> const& getHT() const;
 
-    void handleHttp(std::string addr, std::string file);                                    /* Fill hash table */
-    void displayPage(int conn, std::string& file, HTTPresp* req);                           /* Display HTML page requested by user */
-    int listenHttp(tp::ThreadPoll& threadPool);                                             /* Listen client requests */
-    void HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPresp* req);     /* Parse HTTP request for HTML page */
-    int switchHttp(int conn, HTTPresp* req);                                                /* Analyze http request */
-    void page404Http(int conn, HTTPresp* req);                                              /* Display 404 */
+    void handleHttp(std::string addr, std::string file);                /* Fill hash table */
+    void displayPage(int conn, std::string& file, HTTPresp& req);       /* Display HTML page requested by user */
+    int listenHttp(tp::ThreadPoll& threadPool);                         /* Listen client requests */
+    void HTTPResponse(int conn, std::string& fileName, HTTPresp& req);  /* Parse HTTP request for HTML page */
+    int switchHttp(int conn, HTTPresp& req);                            /* Analyze http request */
+    void page404Http(int conn, HTTPresp& req);                          /* Display 404 */
 
-    TCP tcp;
+    TCP tcp;    /* Transport level */
+
+private:
+    HTTPresp resp;
 };

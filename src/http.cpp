@@ -33,8 +33,9 @@ void HTTP::handleHttp(std::string addr, std::string file) {
     ht[addr] = file;
 }
 
-void HTTP::displayPage(int conn, std::string& file, HTTPresp* resp) {
-    HTTPResponse(conn, file, RESPONSE200, resp);
+void HTTP::displayPage(int conn, std::string& file, HTTPresp& resp) {
+    resp.rt = RESPONSE_200;
+    HTTPResponse(conn, file, resp);
 }
 
 int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
@@ -85,8 +86,7 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
             if (num > BUF_SIZE || num < 0)
                 break;
 
-            HTTPresp* resp = new HTTPresp();
-            resp->parseRequest(buffer, num);
+            resp.parseRequest(buffer, num);
 
               switchHttp(evt.data.fd, resp);
             tcp.closeNet(evt.data.fd);
@@ -98,14 +98,12 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
     return 0;
 }
 
-void HTTP::HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPresp* resp) {
-    std::string response_body;
-    std::string file_path;
+void HTTP::HTTPResponse(int conn, std::string& fileName, HTTPresp& resp) {
     std::stringstream response;
-    size_t read_size;
+    std::string response_body;
     FILE *file;
 
-    file_path = "../src/html/" + fileName;
+    std::string file_path = "../src/html/" + fileName;
 
     /* Opening the HTML page requested by the client */
     if ((file = fopen(file_path.c_str(), "r")) == 0)
@@ -121,21 +119,63 @@ void HTTP::HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPre
     rewind(file);
 
     /* Read HTML content */
-    read_size = fread(&response_body[0], sizeof(char), size, file);
+    size_t read_size = fread(&response_body[0], sizeof(char), size, file);
 
-    switch (rt) {
-    case RESPONSE200:
+    switch (resp.rt) {
+    case RESPONSE_200:
         response << "HTTP/1.1 200 OK\r\n";
         break;
-    case RESPONSE404:
+    case RESPONSE_404:
         response << "HTTP/1.1 404 Not Found\r\n";
         break;
     default:
         break;
     }
 
-    response << "Content-Type: text/html; charset=utf-8\r\n"
-        << "Content-Length: " << read_size
+    /* Set Content-Type */
+    std::string file_type =  file_path.substr(file_path.find_last_of(".") + 1);
+    if (file_type == "gif")
+        resp.ct = CONTENT_GIF;
+    else if (file_type == "jpeg")
+        resp.ct = CONTENT_JPEG;
+    else if (file_type == "png")
+        resp.ct = CONTENT_PNG;
+    else if (file_type == "ico")
+        resp.ct = CONTENT_ICON;
+    else if (file_type == "csv")
+        resp.ct = CONTENT_CSV;
+    else if (file_type == "html")
+        resp.ct = CONTENT_HTML;
+    else if (file_type == "xml")
+        resp.ct = CONTENT_XML;
+
+    switch (resp.ct) {
+    case CONTENT_GIF:
+        response << "Content-Type: image/gif\r\n";
+        break;
+    case CONTENT_JPEG:
+        response << "Content-Type: image/jpeg\r\n";
+        break;
+    case CONTENT_PNG:
+        response << "Content-Type: image/png\r\n";
+        break;
+    case CONTENT_ICON:
+        response << "Content-Type: image/x-icon\r\n";
+        break;
+    case CONTENT_CSV:
+        response << "Content-Type: text/csv\r\n";
+        break;
+    case CONTENT_HTML:
+        response << "Content-Type: text/html\r\n";
+        break;
+    case CONTENT_XML:
+        response << "Content-Type: text/xml\r\n";
+        break;
+    default:
+        break;
+    }
+
+    response << "Content-Length: " << read_size
         << "\r\n\r\n"
         << response_body;
 
@@ -160,20 +200,21 @@ void HTTP::HTTPresp::parseRequest(std::string& buffer, size_t size) {
     std::cout << "method = " << method << " path = " << path << " proto = " << proto << std::endl;
 }
 
-int HTTP::switchHttp(int conn, HTTPresp* resp) {
+int HTTP::switchHttp(int conn, HTTPresp& resp) {
     std::string buffer;
 
-    auto iter = ht.find(resp->path);
+    auto iter = ht.find(resp.path);
     if (iter == ht.end()) {
         page404Http(conn, resp);
         return 0;
     }
 
-    displayPage(conn, ht.at(resp->path), resp);
+    displayPage(conn, ht.at(resp.path), resp);
     return 0;
 }
 
-void HTTP::page404Http(int conn, HTTPresp* resp) {
+void HTTP::page404Http(int conn, HTTPresp& resp) {
     std::string page_name = "page404.html";
-    HTTPResponse(conn, page_name, RESPONSE404, resp);
+    resp.rt = RESPONSE_404;
+    HTTPResponse(conn, page_name, resp);
 }
