@@ -156,11 +156,13 @@ void HTTP::HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPre
         break;
     }
 
-    response << "Version: HTTP/1.1\r\n"
-        << "Content-Type: text/html; charset=utf-8\r\n"
+    response << "Content-Type: text/html; charset=utf-8\r\n"
         << "Content-Length: " << read_size
         << "\r\n\r\n"
         << response_body;
+
+    std::cout << "----------Server response----------\n";
+    std::cout << response.str() << std::endl;
     
     tcp.sendNet(conn, response.str());
     
@@ -168,7 +170,8 @@ void HTTP::HTTPResponse(int conn, std::string& fileName, responseType rt, HTTPre
 }
 
 void HTTP::HTTPresp::parseRequest(std::string& buffer, size_t size) {
-    // std::cout << buffer.data() << std::endl;
+    std::cout << "----------Client request----------\n";
+    std::cout << buffer.data() << std::endl;
 
     Response response = Response::deserialize(buffer.data());
 
