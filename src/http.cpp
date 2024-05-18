@@ -39,10 +39,7 @@ void HTTP::displayPage(int conn, std::string& file, HTTPresp* resp) {
 
 int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
     int serverSockfd;
-    int conn;
-    class HTTPresp* resp;
     std::string buffer;
-    size_t n = 0;
     int counter = 0;
 
     if ((serverSockfd = tcp.listenNet(hostAddr, hostPort)) < 0)
@@ -72,9 +69,9 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
 
         /* If it is listen socket - accept this connection */
         if (evt.data.fd == serverSockfd) {
+            int conn;
             if ((conn = tcp.acceptNet(serverSockfd)) < 0)
                 continue;
-            resp = new HTTPresp();
 
             /* Add file descriptor of new connection to epoll list */
             struct epoll_event evt = {
@@ -84,38 +81,19 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
             epoll_ctl(epollFd, EPOLL_CTL_ADD, conn, &evt);
         } else {
             /* If it isn't listen socket - it's new connection socket */
-            while(1) {
-                n = tcp.recvNet(conn, buffer, BUF_SIZE);
-                if (n > BUF_SIZE || n < 0)
-                    break;
-
-                resp->parseRequest(buffer, n);
+            int num = tcp.recvNet(evt.data.fd, buffer, BUF_SIZE);
+            if (num > BUF_SIZE || num < 0)
                 break;
-            }
-            /* Analyze http request */
-            // std::cout << 0 << std::endl;
-            // switchHttp(conn, resp);
-            // std::cout << 1 << std::endl;
-            // tcp.closeNet(conn);
-            // std::cout << 2 << std::endl;
 
-            // std::cout << 0 << std::endl;
-            // threadPool.Submit([&]() {
-            //     std::cout << 1 << std::endl;
-            //     switchHttp(conn, resp);
-            //     std::cout << 2 << std::endl;
-            //     tcp.closeNet(conn);
-            //     std::cout << 3 << std::endl;
-            // });
+            HTTPresp* resp = new HTTPresp();
+            resp->parseRequest(buffer, num);
 
-            switchHttp(conn, resp);
-            tcp.closeNet(conn);
+              switchHttp(evt.data.fd, resp);
+            tcp.closeNet(evt.data.fd);
         }
     }
     
-    // std::cout << 3 << std::endl;
     tcp.closeNet(serverSockfd);
-    // std::cout << 4 << std::endl;
 
     return 0;
 }
