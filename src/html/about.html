@@ -4,6 +4,15 @@
     <title>ABOUT!</title>
   </head>
   <body>
+    <script>
+      const params = new URLSearchParams(document.location.search);
+      const a = params.get("a");
+      const b = params.get("b");
+      const c = params.get("c");
+      console.info(a); //show a
+      console.info(b); //show b
+      console.info(c); //show c
+    </script>
     <div>
       <a href="/">Index</a>
       <a href="/about">About</a>

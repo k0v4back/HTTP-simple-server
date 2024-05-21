@@ -36,7 +36,9 @@ Response Response::deserialize(const std::string& response) {
     std::vector<std::string> responseCodeSegments = split(responseCodeLine, " ");
     HTTPVersion version = HTTPVersionFromString(responseCodeSegments[2]);
     std::string method = responseCodeSegments[0];
-    std::string path = responseCodeSegments[1];
+
+    std::vector<std::string> responsePathSegments = split(responseCodeSegments[1], "?");
+    std::string path = responsePathSegments[0];
 
     return Response(version, body, method, path, FromHTTPVerstionToString(version));
 }
