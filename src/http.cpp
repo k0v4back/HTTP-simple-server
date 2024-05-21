@@ -11,6 +11,7 @@
 
 #include "http.h"
 #include "http_parser/response.h"
+#include "http_parser/http_parser.h"
 
 HTTP::HTTP(std::string addr = "127.0.0.1", std::string port = "80") {
     hostAddr = addr;
@@ -25,17 +26,12 @@ std::string HTTP::getHostPort() const {
     return hostPort;
 }
 
-std::unordered_map<std::string, std::string> const& HTTP::getHT() const {
+std::map<std::string, std::map<HTTPMethod, std::string>> const& HTTP::getHT() const {
     return ht;
 }
 
-void HTTP::handleHttp(std::string addr, std::string file) {
-    ht[addr] = file;
-}
-
-void HTTP::displayPage(int conn, std::string& file, HTTPresp& resp) {
-    resp.rt = RESPONSE_200;
-    HTTPResponse(conn, file, resp);
+void HTTP::handleHttp(std::string addr, HTTPMethod method, std::string file) {
+    ht[addr].insert(std::make_pair(method, file));
 }
 
 int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
@@ -88,7 +84,7 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
 
             resp.parseRequest(buffer, num);
 
-              switchHttp(evt.data.fd, resp);
+            switchHttp(evt.data.fd, resp);
             tcp.closeNet(evt.data.fd);
         }
     }
@@ -207,9 +203,14 @@ int HTTP::switchHttp(int conn, HTTPresp& resp) {
     if (iter == ht.end()) {
         page404Http(conn, resp);
         return 0;
+    } else if ((ht.at(resp.path)).find(HTTPMethodFromString(resp.method)) == (ht.at(resp.path)).end()) {
+        page404Http(conn, resp);
+        return 0;  
     }
 
-    displayPage(conn, ht.at(resp.path), resp);
+    resp.rt = RESPONSE_200;
+    HTTPResponse(conn, (ht.at(resp.path)).find(HTTPMethodFromString(resp.method))->second, resp);
+
     return 0;
 }
 

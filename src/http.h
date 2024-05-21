@@ -9,6 +9,7 @@
 
 #include "tcp.h"
 #include "../libs/Thread-pool/src/thread_pool.h"
+#include "http_parser/http_parser.h"
 
 #define METHOD_SIZE 16
 #define PATH_SIZE 2048
@@ -39,7 +40,9 @@ class HTTP {
 private:
     std::string hostAddr;
     std::string hostPort;
-    std::unordered_map<std::string, std::string> ht;
+
+    /* URI, method, file name */
+    std::map<std::string, std::map<HTTPMethod, std::string>> ht;
 
 public:
     class HTTPresp {
@@ -58,14 +61,13 @@ public:
 
     std::string getHostAddr() const;
     std::string getHostPort() const;
-    std::unordered_map<std::string, std::string> const& getHT() const;
+    std::map<std::string, std::map<HTTPMethod, std::string>> const& getHT() const;
 
-    void handleHttp(std::string addr, std::string file);                /* Fill hash table */
-    void displayPage(int conn, std::string& file, HTTPresp& req);       /* Display HTML page requested by user */
-    int listenHttp(tp::ThreadPoll& threadPool);                         /* Listen client requests */
-    void HTTPResponse(int conn, std::string& fileName, HTTPresp& req);  /* Parse HTTP request for HTML page */
-    int switchHttp(int conn, HTTPresp& req);                            /* Analyze http request */
-    void page404Http(int conn, HTTPresp& req);                          /* Display 404 */
+    void handleHttp(std::string addr, HTTPMethod method, std::string file); /* Fill hash table */
+    int listenHttp(tp::ThreadPoll& threadPool);                             /* Listen client requests */
+    void HTTPResponse(int conn, std::string& fileName, HTTPresp& req);      /* Parse HTTP request for HTML page */
+    int switchHttp(int conn, HTTPresp& req);                                /* Analyze http request */
+    void page404Http(int conn, HTTPresp& req);                              /* Display 404 */
 
     TCP tcp;    /* Transport level */
 

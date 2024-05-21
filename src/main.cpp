@@ -2,23 +2,26 @@
 #include <cstring>
 
 #include "http.h"
+#include "http_parser/http_parser.h"
 #include "../libs/Thread-pool/src/thread_pool.h"
 
-template<typename T, typename U>
-void print_hashmap(std::unordered_map<T, U> const &ht)
+template<typename T, typename U, typename V>
+void print_hashmap(std::map<T, std::map<U, V>> const &ht)
 {
-    for (auto const &pair: ht) {
-        std::cout << "{" << pair.first << ": " << pair.second << "}\n";
-    }
+    // for (auto const &pair: ht) {
+    //     std::cout << "{ Address = " << pair.first << "; Path to page = " << pair.second
+    //     << "; HTTP method = " << "}\n";
+    // }
 }
 
 int main() {
     HTTP* server = new HTTP("127.0.0.1", "7373");
     tp::ThreadPoll threadPool {std::thread::hardware_concurrency()};
 
-    server->handleHttp("/", "index.html");
-    server->handleHttp("/about", "about.html");
-    server->handleHttp("/favicon.ico", "../icons/favicon.ico");
+    server->handleHttp("/", HTTPMethod::GET, "index.html");
+    server->handleHttp("/about", HTTPMethod::GET, "about.html");
+    server->handleHttp("/favicon.ico", HTTPMethod::GET, "../icons/favicon.ico");
+    server->handleHttp("/", HTTPMethod::POST, "");
 
     /* For debug */
     print_hashmap(server->getHT());
