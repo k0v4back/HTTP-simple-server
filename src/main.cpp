@@ -35,6 +35,7 @@ int main() {
     }
 
     threadPool.WaitAll();
+    threadPool.Stop();
 
     return 0;
 }

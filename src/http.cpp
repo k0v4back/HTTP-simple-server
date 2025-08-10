@@ -1,3 +1,4 @@
+#include <cerrno>
 #include <iostream>
 
 #include <cstring>
@@ -8,6 +9,7 @@
 #include <sstream>
 #include <fstream>
 #include <sys/epoll.h>
+#include <fcntl.h>
 
 #include "http.h"
 #include "http_parser/response.h"
@@ -56,8 +58,11 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
 
      while (1) {
         int timeout = -1; /* Block forever */
+        int maxevents = 1;
         errno = 0;
-        if (epoll_wait(epollFd, &evt, 1, timeout) < 1) {
+        int nfds = epoll_wait(epollFd, &evt, maxevents, timeout);
+
+        if (epoll_wait(epollFd, &evt, maxevents, timeout) < 1) {
             if (errno == EINTR)
                 continue;
             perror("epoll_wait()");
@@ -66,26 +71,45 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
 
         /* If it is listen socket - accept this connection */
         if (evt.data.fd == serverSockfd) {
-            int conn;
-            if ((conn = tcp.acceptNet(serverSockfd)) < 0)
-                continue;
+            while (1) {
+                int conn;
+                if ((conn = tcp.acceptNet(serverSockfd)) < 0) {
+                    if (errno == EAGAIN) {
+                        break;
+                    }
+                }
 
-            /* Add file descriptor of new connection to epoll list */
-            struct epoll_event evt = {
-                { EPOLLIN },
-                { .fd = conn }
-            };
-            epoll_ctl(epollFd, EPOLL_CTL_ADD, conn, &evt);
+                /* Set nonblocking for client fd */
+                int flags = fcntl(conn, F_GETFL, 0);
+                fcntl(conn, F_SETFL, flags | O_NONBLOCK);
+
+                /* Add file descriptor of new connection to epoll list */
+                struct epoll_event evt = {
+                    { EPOLLIN | EPOLLHUP },
+                    { .fd = conn }
+                };
+                epoll_ctl(epollFd, EPOLL_CTL_ADD, conn, &evt);
+                std::cout << "Connected fd: " << evt.data.fd << std::endl;
+            }
         } else {
-            /* If it isn't listen socket - it's new connection socket */
-            int num = tcp.recvNet(evt.data.fd, buffer, BUF_SIZE);
-            if (num > BUF_SIZE || num < 0)
-                break;
+            if (evt.events & EPOLLHUP) {
+                std::cout << "Disconnected fd: " << evt.data.fd << std::endl;
+                tcp.closeNet(evt.data.fd);
+            } else if (evt.events & EPOLLIN) {
+                int num = tcp.recvNet(evt.data.fd, buffer, BUF_SIZE);
+                if (num > BUF_SIZE || num < 0)
+                    break;
 
-            resp.parseRequest(buffer, num);
+                // resp.parseRequest(buffer, num);
+                // switchHttp(evt.data.fd, resp);
+                // tcp.closeNet(evt.data.fd);
 
-            switchHttp(evt.data.fd, resp);
-            tcp.closeNet(evt.data.fd);
+                threadPool.Submit([&]() {
+                    resp.parseRequest(buffer, num);
+                    switchHttp(evt.data.fd, resp);
+                    tcp.closeNet(evt.data.fd);
+                });
+            }
         }
     }
     

@@ -10,10 +10,10 @@ public:
     TCP() = default;
     ~TCP() = default;
 
-    class acceptedSocket {
+    class serverSocket {
     public:
-        int clientSockfd;
-        struct sockaddr_in clientAddress;
+        int serverSockfd;
+        struct sockaddr_in serverAddress;
         bool acceptedSuccessfully;
         int error;
     };
