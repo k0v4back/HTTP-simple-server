@@ -8,7 +8,7 @@
 #include <mutex>
 
 #include "tcp.h"
-#include "../libs/Thread-pool/src/thread_pool.h"
+#include "../libs/Thread-pool/include/thread_pool.h"
 #include "http_parser/http_parser.h"
 
 #define METHOD_SIZE 16
