@@ -61,8 +61,7 @@ int TCP::sendNet(int conn, const std::string& buffer) {
     return send(conn, buffer.c_str(), buffer.length(), 0);
 }
 
-int TCP::recvNet(int conn, std::string& buffer, size_t size) {
-    char* buf_c = (char*)buffer.data();
-    int num = recv(conn, buf_c, (int)size, 0);
+int TCP::recvNet(int conn, char* buffer, size_t size) {
+    int num = recv(conn, buffer, (int)size, 0);
     return num;
 }

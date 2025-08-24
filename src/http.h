@@ -54,7 +54,7 @@ public:
         responseType rt;
         contentType ct;
 
-        void parseRequest(std::string& buffer, size_t size);    /* Parse HTTP request from client */
+        void parseRequest(std::string buffer, size_t size);    /* Parse HTTP request from client */
     };
 
     HTTP(std::string addr, std::string ip);

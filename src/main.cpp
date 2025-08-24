@@ -8,10 +8,9 @@
 template<typename T, typename U, typename V>
 void print_hashmap(std::map<T, std::map<U, V>> const &ht)
 {
-    // for (auto const &pair: ht) {
-    //     std::cout << "{ Address = " << pair.first << "; Path to page = " << pair.second
-    //     << "; HTTP method = " << "}\n";
-    // }
+    for (auto const &pair: ht) {
+        std::cout << "{ Address = " << pair.first << " }\n";
+    }
 }
 
 int main() {
@@ -23,9 +22,10 @@ int main() {
     server->handleHttp("/favicon.ico", HTTPMethod::GET, "../icons/favicon.ico");
     server->handleHttp("/", HTTPMethod::POST, "");
 
-    /* For debug */
+#ifdef DEBUG
     print_hashmap(server->getHT());
     std::cout << "hostAddr=" << server->getHostAddr() << std::endl;
+#endif
 
     try {
         server->listenHttp(threadPool);

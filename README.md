@@ -11,11 +11,20 @@ git submodule update --init --recursive
 
 ## Compile
 
+### Debug:
 ```bash
 mkdir build
 cd build
-cmake ../
-cmake --build .
+cmake -DCMAKE_BUILD_TYPE=Debug ../
+cmake --build . --config Debug
+```
+
+### Release:
+```bash
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ../
+cmake --build . --config Release
 ```
 
 ## Run

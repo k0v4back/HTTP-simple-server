@@ -22,6 +22,6 @@ public:
     int acceptNet(int listenServerSocket);              /* Accept connections by server */
     int closeNet(int conn);                             /* Server or client close connection */
 
-    int sendNet(int conn, const std::string& buffer);           /* Send request */
-    int recvNet(int conn, std::string& buffer, size_t size);    /* Recive */
+    int sendNet(int conn, const std::string& buffer);   /* Send request */
+    int recvNet(int conn, char* buffer, size_t size);   /* Receive */
 };
