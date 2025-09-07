@@ -7,9 +7,10 @@
 #include <vector>
 #include <mutex>
 
-#include "tcp.h"
 #include "../libs/Thread-pool/include/thread_pool.h"
-#include "http_parser/http_parser.h"
+#include "http_parser/include/http_parser.h"
+
+#include "net/include/tcp.h"
 
 #define METHOD_SIZE 16
 #define PATH_SIZE 2048
@@ -57,19 +58,19 @@ public:
         void parseRequest(std::string buffer, size_t size);    /* Parse HTTP request from client */
     };
 
-    HTTP(std::string addr, std::string ip);
+    HTTP(net::tcp_server_info tcp_server_info) : tcp_server(tcp_server_info) {}
 
     std::string getHostAddr() const;
     std::string getHostPort() const;
     std::map<std::string, std::map<HTTPMethod, std::string>> const& getHT() const;
 
-    void handleHttp(std::string addr, HTTPMethod method, std::string file); /* Fill hash table */
-    int listenHttp(tp::ThreadPoll& threadPool);                             /* Listen client requests */
-    void HTTPResponse(int conn, std::string& fileName, HTTPresp& req);      /* Parse HTTP request for HTML page */
-    int switchHttp(int conn, HTTPresp& req);                                /* Analyze http request */
-    void page404Http(int conn, HTTPresp& req);                              /* Display 404 */
+    void handleHttp(std::string addr, HTTPMethod method, std::string file);         /* Fill hash table */
+    int listenHttp(tp::ThreadPoll& threadPool);                                     /* Listen client requests */
+    void HTTPResponse(net::fd_t fd_t, std::string& fileName, HTTPresp& req);        /* Parse HTTP request for HTML page */
+    int switchHttp(net::fd_t fd_t, HTTPresp& req);                                  /* Analyze http request */
+    void page404Http(net::fd_t fd_t, HTTPresp& req);                                /* Display 404 */
 
-    TCP tcp;    /* Transport level */
+    net::tcp_server tcp_server; /* Transport level */
 
 private:
     HTTPresp resp;

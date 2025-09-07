@@ -16,15 +16,11 @@
 #include <unistd.h>
 
 #include "http.h"
-#include "http_parser/response.h"
-#include "http_parser/http_parser.h"
+#include "http_parser/include/http_response.h"
+#include "http_parser/include/http_parser.h"
+#include "net/net.h"
 
 #define MAXEVENTS 10
-
-HTTP::HTTP(std::string addr = "127.0.0.1", std::string port = "80") {
-    hostAddr = addr;
-    hostPort = port;
-}
 
 std::string HTTP::getHostAddr() const {
     return hostAddr;
@@ -43,11 +39,13 @@ void HTTP::handleHttp(std::string addr, HTTPMethod method, std::string file) {
 }
 
 int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
-    int serverSockfd;
+    net::fd_t serverSockfd;
     int counter = 0;
 
-    if ((serverSockfd = tcp.listenNet(hostAddr, hostPort)) < 0)
-        throw std::runtime_error("Failed to create server socket");
+    serverSockfd = tcp_server.create_socket();
+    tcp_server.on_socket_create(serverSockfd);
+    tcp_server.bind_socket(serverSockfd);
+    tcp_server.start_listen(serverSockfd);
 
     /* Data structure in the kernel with the descriptors of interest */
     int epollFd = epoll_create1(0);
@@ -98,37 +96,37 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
                     std::cout << "Connected fd: " << evt.data.fd << std::endl;
                 }
             } else {
-                int fd = evts[i].data.fd;
+                net::fd_t fd = evts[i].data.fd;
                 if (evts[i].events & EPOLLHUP) {
                     std::cout << "Disconnected Freed fd: " << fd << std::endl;
-                    tcp.closeNet(fd);
+                    tcp_server.close_socket(fd);
                 } else if (evts[i].events & EPOLLIN) {
                     char buffer[BUF_SIZE];
-                    int count = tcp.recvNet(fd, buffer, BUF_SIZE);
+                    int count = recv(fd, buffer, BUF_SIZE, 0);
 
                     if (count == -1 && errno == EAGAIN) {
-                        tcp.closeNet(fd);
+                        tcp_server.close_socket(fd);
                     } else if (count == 0) {
                         std::cout << "Disconnected fd: " << fd << std::endl;
-                        tcp.closeNet(fd);
+                        tcp_server.close_socket(fd);
                     }
 
                     threadPool.Submit([buffer, count, fd, this]() {
                         resp.parseRequest(buffer, count);
                         switchHttp(fd, resp);
-                        tcp.closeNet(fd);
+                        tcp_server.close_socket(fd);
                     });
                 }
             }
         }
     }
     
-    tcp.closeNet(serverSockfd);
+    tcp_server.close_socket(serverSockfd);
 
     return 0;
 }
 
-void HTTP::HTTPResponse(int conn, std::string& fileName, HTTPresp& resp) {
+void HTTP::HTTPResponse(net::fd_t fd_t, std::string& fileName, HTTPresp& resp) {
     std::stringstream response;
     std::string response_body;
     FILE *file;
@@ -212,7 +210,7 @@ void HTTP::HTTPResponse(int conn, std::string& fileName, HTTPresp& resp) {
     std::cout << "----------Server response----------\n";
     std::cout << response.str() << std::endl;
     
-    tcp.sendNet(conn, response.str());
+    send(fd_t, response.str().c_str(), response.str().length(), 0);
     
     fclose(file);
 }
@@ -230,26 +228,26 @@ void HTTP::HTTPresp::parseRequest(std::string buffer, size_t size) {
     std::cout << "method = " << method << " path = " << path << " proto = " << proto << std::endl;
 }
 
-int HTTP::switchHttp(int conn, HTTPresp& resp) {
+int HTTP::switchHttp(net::fd_t fd_t, HTTPresp& resp) {
     std::string buffer;
 
     auto iter = ht.find(resp.path);
     if (iter == ht.end()) {
-        page404Http(conn, resp);
+        page404Http(fd_t, resp);
         return 0;
     } else if ((ht.at(resp.path)).find(HTTPMethodFromString(resp.method)) == (ht.at(resp.path)).end()) {
-        page404Http(conn, resp);
+        page404Http(fd_t, resp);
         return 0;  
     }
 
     resp.rt = RESPONSE_200;
-    HTTPResponse(conn, (ht.at(resp.path)).find(HTTPMethodFromString(resp.method))->second, resp);
+    HTTPResponse(fd_t, (ht.at(resp.path)).find(HTTPMethodFromString(resp.method))->second, resp);
 
     return 0;
 }
 
-void HTTP::page404Http(int conn, HTTPresp& resp) {
+void HTTP::page404Http(net::fd_t fd_t, HTTPresp& resp) {
     std::string page_name = "page404.html";
     resp.rt = RESPONSE_404;
-    HTTPResponse(conn, page_name, resp);
+    HTTPResponse(fd_t, page_name, resp);
 }

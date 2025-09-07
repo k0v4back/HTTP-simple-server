@@ -21,11 +21,11 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(SOURCES
-        src/tcp.cpp
-        src/http_parser/response.cpp
-        src/http_parser/http_parser.cpp
+        src/http_parser/src/http_response.cpp
+        src/http_parser/src/http_parser.cpp
         src/http.cpp
         src/main.cpp
+        src/net/src/tcp.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
