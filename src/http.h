@@ -9,6 +9,7 @@
 
 #include "../libs/Thread-pool/include/thread_pool.h"
 #include "http_parser/include/http_parser.h"
+#include "config_parser/include/config_parser.h"
 
 #include "net/include/tcp.h"
 
@@ -64,11 +65,11 @@ public:
     std::string getHostPort() const;
     std::map<std::string, std::map<HTTPMethod, std::string>> const& getHT() const;
 
-    void handleHttp(std::string addr, HTTPMethod method, std::string file);         /* Fill hash table */
-    int listenHttp(tp::ThreadPoll& threadPool);                                     /* Listen client requests */
-    void HTTPResponse(net::fd_t fd_t, std::string& fileName, HTTPresp& req);        /* Parse HTTP request for HTML page */
-    int switchHttp(net::fd_t fd_t, HTTPresp& req);                                  /* Analyze http request */
-    void page404Http(net::fd_t fd_t, HTTPresp& req);                                /* Display 404 */
+    void handleHttp(std::string addr, HTTPMethod method, std::string file);                 /* Fill hash table */
+    int listenHttp(tp::ThreadPoll& threadPool, const config::config_parser& config);        /* Listen client requests */
+    void HTTPResponse(net::fd_t fd_t, const std::string& fileName, HTTPresp& req);                /* Parse HTTP request for HTML page */
+    int switchHttp(net::fd_t fd_t, HTTPresp& req, const config::config_parser& config);     /* Analyze http request */
+    void page404Http(net::fd_t fd_t, HTTPresp& req, const config::config_parser& config);   /* Display 404 */
 
     net::tcp_server tcp_server; /* Transport level */
 

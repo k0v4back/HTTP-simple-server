@@ -38,7 +38,7 @@ void HTTP::handleHttp(std::string addr, HTTPMethod method, std::string file) {
     ht[addr].insert(std::make_pair(method, file));
 }
 
-int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
+int HTTP::listenHttp(tp::ThreadPoll& threadPool, const config::config_parser& config) {
     net::fd_t serverSockfd;
     int counter = 0;
 
@@ -111,9 +111,9 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
                         tcp_server.close_socket(fd);
                     }
 
-                    threadPool.Submit([buffer, count, fd, this]() {
+                    threadPool.Submit([buffer, count, fd, config, this]() {
                         resp.parseRequest(buffer, count);
-                        switchHttp(fd, resp);
+                        switchHttp(fd, resp, config);
                         tcp_server.close_socket(fd);
                     });
                 }
@@ -126,16 +126,20 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool) {
     return 0;
 }
 
-void HTTP::HTTPResponse(net::fd_t fd_t, std::string& fileName, HTTPresp& resp) {
+void HTTP::HTTPResponse(net::fd_t fd_t, const std::string& fileName, HTTPresp& resp) {
     std::stringstream response;
     std::string response_body;
     FILE *file;
 
-    std::string file_path = "../src/html/" + fileName;
+    // std::string file_path = "src/html/" + fileName;
+
+    std::cout << "fileName=" << fileName << std::endl;
 
     /* Opening the HTML page requested by the client */
-    if ((file = fopen(file_path.c_str(), "r")) == 0)
-        return;
+    if ((file = fopen(fileName.c_str(), "r")) == 0)
+    {
+        throw std::runtime_error("Failed to open file with html");
+    }
     
     /* Seek to end of file */
     fseek(file, 0, SEEK_END);
@@ -161,21 +165,21 @@ void HTTP::HTTPResponse(net::fd_t fd_t, std::string& fileName, HTTPresp& resp) {
     }
 
     /* Set Content-Type */
-    std::string file_type =  file_path.substr(file_path.find_last_of(".") + 1);
-    if (file_type == "gif")
-        resp.ct = CONTENT_GIF;
-    else if (file_type == "jpeg")
-        resp.ct = CONTENT_JPEG;
-    else if (file_type == "png")
-        resp.ct = CONTENT_PNG;
-    else if (file_type == "ico")
-        resp.ct = CONTENT_ICON;
-    else if (file_type == "csv")
-        resp.ct = CONTENT_CSV;
-    else if (file_type == "html")
-        resp.ct = CONTENT_HTML;
-    else if (file_type == "xml")
-        resp.ct = CONTENT_XML;
+    // std::string file_type =  file_path.substr(file_path.find_last_of(".") + 1);
+    // if (file_type == "gif")
+    //     resp.ct = CONTENT_GIF;
+    // else if (file_type == "jpeg")
+    //     resp.ct = CONTENT_JPEG;
+    // else if (file_type == "png")
+    //     resp.ct = CONTENT_PNG;
+    // else if (file_type == "ico")
+    //     resp.ct = CONTENT_ICON;
+    // else if (file_type == "csv")
+    //     resp.ct = CONTENT_CSV;
+    // else if (file_type == "html")
+    //     resp.ct = CONTENT_HTML;
+    // else if (file_type == "xml")
+    //     resp.ct = CONTENT_XML;
 
     switch (resp.ct) {
     case CONTENT_GIF:
@@ -228,26 +232,31 @@ void HTTP::HTTPresp::parseRequest(std::string buffer, size_t size) {
     std::cout << "method = " << method << " path = " << path << " proto = " << proto << std::endl;
 }
 
-int HTTP::switchHttp(net::fd_t fd_t, HTTPresp& resp) {
+int HTTP::switchHttp(net::fd_t fd_t, HTTPresp& resp, const config::config_parser& config) {
     std::string buffer;
 
-    auto iter = ht.find(resp.path);
-    if (iter == ht.end()) {
-        page404Http(fd_t, resp);
-        return 0;
-    } else if ((ht.at(resp.path)).find(HTTPMethodFromString(resp.method)) == (ht.at(resp.path)).end()) {
-        page404Http(fd_t, resp);
-        return 0;  
-    }
+    // auto iter = ht.find(resp.path);
+    // if (iter == ht.end()) {
+    //     page404Http(fd_t, resp, config);
+    //     return 0;
+    // } else if ((ht.at(resp.path)).find(HTTPMethodFromString(resp.method)) == (ht.at(resp.path)).end()) {
+    //     page404Http(fd_t, resp, config);
+    //     return 0;  
+    // }
+
+    std::cout << " config.get_root() = " << config.get_root() << std::endl;
 
     resp.rt = RESPONSE_200;
-    HTTPResponse(fd_t, (ht.at(resp.path)).find(HTTPMethodFromString(resp.method))->second, resp);
+    // HTTPResponse(fd_t, (ht.at(resp.path)).find(HTTPMethodFromString(resp.method))->second, resp);
+    HTTPResponse(fd_t, config.get_root(), resp);
 
     return 0;
 }
 
-void HTTP::page404Http(net::fd_t fd_t, HTTPresp& resp) {
+void HTTP::page404Http(net::fd_t fd_t, HTTPresp& resp, const config::config_parser& config) {
     std::string page_name = "page404.html";
     resp.rt = RESPONSE_404;
+
+    std::cout << " config.get_root() = " << config.get_root() << std::endl;
     HTTPResponse(fd_t, page_name, resp);
 }

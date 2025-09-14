@@ -24,8 +24,9 @@ set(SOURCES
         src/http_parser/src/http_response.cpp
         src/http_parser/src/http_parser.cpp
         src/http.cpp
-        src/main.cpp
         src/net/src/tcp.cpp
+        src/config_parser/src/config_parser.cpp
+        main.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

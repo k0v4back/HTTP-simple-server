@@ -21,7 +21,7 @@ namespace net
             ~tcp_server_info() = default;
 
         public:
-            void set_local_ip(std::string& ip)
+            void set_local_ip(std::string ip)
             {
                 local_ip = ip;
             }
@@ -31,7 +31,7 @@ namespace net
                 return local_ip;
             }
 
-            void set_local_port(std::string& port)
+            void set_local_port(std::string port)
             {
                 local_port = port;
             }
