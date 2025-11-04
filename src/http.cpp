@@ -247,6 +247,7 @@ int HTTP::switchHttp(net::fd_t fd_t, HTTPresp& resp, const config::config_parser
     std::cout << " config.get_root() = " << config.get_root() << std::endl;
 
     resp.rt = RESPONSE_200;
+    resp.ct = CONTENT_HTML;
     // HTTPResponse(fd_t, (ht.at(resp.path)).find(HTTPMethodFromString(resp.method))->second, resp);
     HTTPResponse(fd_t, config.get_root(), resp);
 
