@@ -64,12 +64,18 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool, const config::config_parser& co
         int timeout = -1; /* Block forever */
         errno = 0;
         int nfds = epoll_wait(epollFd, evts, MAXEVENTS, timeout);
-
-        if (epoll_wait(epollFd, evts, MAXEVENTS, timeout) < 1) {
+        
+        /* Error */
+        if (nfds == -1) {
             if (errno == EINTR)
                 continue;
             perror("epoll_wait()");
             return 1;
+        }
+
+        /* Just time out */
+        if (nfds == 0) {
+            continue;
         }
 
         for (int i = 0; i < nfds; ++i) {
@@ -80,20 +86,41 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool, const config::config_parser& co
                     socklen_t client_len = sizeof(client_addr);
                     int client_fd = accept(serverSockfd, (struct sockaddr *)&client_addr, &client_len);
                     if (client_fd == -1) {
-                        if (errno == EAGAIN) {
+                        if (errno == EINTR) {
+                            continue;
+                        }
+
+                        if (errno == EAGAIN || errno == EWOULDBLOCK) {
                             break;
                         }
+
+                        perror("accept");
+                        break;
                     }
 
                     /* Set nonblocking for client fd */
                     int flags = fcntl(client_fd, F_GETFL, 0);
-                    fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
+                    if (flags == -1) {
+                        perror("fcntl(F_GETFL)");
+                        tcp_server.close_socket(client_fd);
+                        continue;
+                    }
+
+                    if (fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+                        perror("fcntl(F_SETFL)");
+                        tcp_server.close_socket(client_fd);
+                        continue;
+                    }
+
+                    evt.events = EPOLLIN | EPOLLRDHUP;
+                    evt.data.fd = client_fd;
 
                     /* Add file descriptor of new connection to epoll list */
-                    evt.events = EPOLLIN | EPOLLHUP;
-                    evt.data.fd = client_fd;
-                    epoll_ctl(epollFd, EPOLL_CTL_ADD, client_fd, &evt);
-                    std::cout << "Connected fd: " << evt.data.fd << std::endl;
+                    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, client_fd, &evt) == -1) {
+                        perror("epoll_ctl(EPOLL_CTL_ADD)");
+                        tcp_server.close_socket(client_fd);
+                        continue;
+                    }
                 }
             } else {
                 net::fd_t fd = evts[i].data.fd;
@@ -102,20 +129,40 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool, const config::config_parser& co
                     tcp_server.close_socket(fd);
                 } else if (evts[i].events & EPOLLIN) {
                     char buffer[BUF_SIZE];
-                    int count = recv(fd, buffer, BUF_SIZE, 0);
+                    ssize_t count = recv(fd, buffer, sizeof(buffer), 0);
 
-                    if (count == -1 && errno == EAGAIN) {
-                        tcp_server.close_socket(fd);
-                    } else if (count == 0) {
+                    if (count > 0) {
+                        std::string request_data(buffer, static_cast<std::size_t>(count));
+
+                        threadPool.Submit(
+                            [request_data = std::move(request_data), fd, config, this]() {
+                                HTTPresp request;
+
+                                request.parseRequest(request_data, request_data.size());
+                                switchHttp(fd, request, config);
+
+                                tcp_server.close_socket(fd);
+                            }
+                        );
+                    }
+                    else if (count == 0) {
                         std::cout << "Disconnected fd: " << fd << std::endl;
                         tcp_server.close_socket(fd);
-                    }
+                    } else {
+                        if (errno == EINTR) {
+                            /* Call was interrupted by signal */
+                            continue;
+                        }
 
-                    threadPool.Submit([buffer, count, fd, config, this]() {
-                        resp.parseRequest(buffer, count);
-                        switchHttp(fd, resp, config);
+                        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                            /* There is no data yet. Leave connection open */
+                            continue;
+                        }
+
+                        /* Another error */
+                        perror("recv");
                         tcp_server.close_socket(fd);
-                    });
+                    }                    
                 }
             }
         }
@@ -244,7 +291,7 @@ int HTTP::switchHttp(net::fd_t fd_t, HTTPresp& resp, const config::config_parser
     //     return 0;  
     // }
 
-    std::cout << " config.get_root() = " << config.get_root() << std::endl;
+    std::cout << "config.get_root() = " << config.get_root() << std::endl;
 
     resp.rt = RESPONSE_200;
     resp.ct = CONTENT_HTML;
