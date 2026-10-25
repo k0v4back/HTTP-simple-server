@@ -121,6 +121,9 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool, const config::config_parser& co
                         tcp_server.close_socket(client_fd);
                         continue;
                     }
+
+                    connections.emplace(client_fd, Connection());
+                    std::cout << "Connected fd: " << client_fd << '\n';
                 }
             } else {
                 net::fd_t fd = evts[i].data.fd;
@@ -128,41 +131,103 @@ int HTTP::listenHttp(tp::ThreadPoll& threadPool, const config::config_parser& co
                     std::cout << "Disconnected Freed fd: " << fd << std::endl;
                     tcp_server.close_socket(fd);
                 } else if (evts[i].events & EPOLLIN) {
+                    auto connection = connections.find(fd);
+
+                    /* Connection deleted */
+                    if (connection == connections.end()) {
+                        continue;
+                    }
+                    
+                    Connection& exist_connection = connection->second;
+
                     char buffer[BUF_SIZE];
-                    ssize_t count = recv(fd, buffer, sizeof(buffer), 0);
+                    bool connection_error = false;
 
-                    if (count > 0) {
-                        std::string request_data(buffer, static_cast<std::size_t>(count));
+                    while (true) {
+                        ssize_t count = recv(fd, buffer, sizeof(buffer), 0);
+                        if (count > 0) {
+                            exist_connection.request_buffer.append(buffer, static_cast<std::size_t>(count));
 
-                        threadPool.Submit(
-                            [request_data = std::move(request_data), fd, config, this]() {
+                            constexpr std::size_t MAX_REQUEST_SIZE = 1024 * 1024;
+                            if (exist_connection.request_buffer.size() > MAX_REQUEST_SIZE) {
+                                connection_error = true;
+                                break;
+                            }
+
+                            continue;
+                        }
+
+                        /* Client close connection */
+                        if (count == 0) {
+                            connection_error = true;
+                            break;
+                        }
+
+                        /* Check errors after recv() */
+                        if (errno == EINTR) {
+                            continue;
+                        }
+                        
+                        /* Check end of recv() */
+                        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                            break;
+                        }
+
+                        perror("recv");
+                        connection_error = true;
+                        break;
+                    }
+
+                    /* Close socket if some errors */
+                    if (connection_error) {
+                        epoll_ctl(epollFd, EPOLL_CTL_DEL, fd, nullptr);
+                        tcp_server.close_socket(fd);
+                        connections.erase(fd);
+                        continue;
+                    }
+
+                    /* If request not fully received */
+                    if (!isHttpRequestComplete(exist_connection.request_buffer)) {
+                        continue;
+                    }
+
+                    /* If processing request - not send data */
+                    if (exist_connection.request_processing) {
+                        continue;
+                    }
+
+                    /* Read all request */
+                    exist_connection.request_processing = true;
+
+                    /* Get all the request */
+                    std::string request_data = std::move(exist_connection.request_buffer);
+
+                    /* Delete socket from connections */
+                    if (epoll_ctl(epollFd, EPOLL_CTL_DEL, fd, nullptr) == -1) {
+                        perror("epoll_ctl(EPOLL_CTL_DEL)");
+
+                        tcp_server.close_socket(fd);
+                        connections.erase(fd);
+                        continue;
+                    }
+
+                    connections.erase(connection);
+
+                    threadPool.Submit(
+                        [request_data = std::move(request_data), fd, config, this]() {
+                            try {
                                 HTTPresp request;
-
                                 request.parseRequest(request_data, request_data.size());
                                 switchHttp(fd, request, config);
-
-                                tcp_server.close_socket(fd);
+                            } catch (const std::exception& e) {
+                                std::cerr << "HTTP request processing failed: " << e.what() << '\n';
+                            } catch (...) {
+                                std::cerr << "Unknown HTTP request processing error\n";
                             }
-                        );
-                    }
-                    else if (count == 0) {
-                        std::cout << "Disconnected fd: " << fd << std::endl;
-                        tcp_server.close_socket(fd);
-                    } else {
-                        if (errno == EINTR) {
-                            /* Call was interrupted by signal */
-                            continue;
-                        }
 
-                        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                            /* There is no data yet. Leave connection open */
-                            continue;
+                            tcp_server.close_socket(fd);
                         }
-
-                        /* Another error */
-                        perror("recv");
-                        tcp_server.close_socket(fd);
-                    }                    
+                    );                
                 }
             }
         }
@@ -307,4 +372,9 @@ void HTTP::page404Http(net::fd_t fd_t, HTTPresp& resp, const config::config_pars
 
     std::cout << " config.get_root() = " << config.get_root() << std::endl;
     HTTPResponse(fd_t, page_name, resp);
+}
+
+bool HTTP::isHttpRequestComplete(const std::string& buffer)
+{
+    return buffer.find("\r\n\r\n") != std::string::npos;
 }

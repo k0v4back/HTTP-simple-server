@@ -46,6 +46,15 @@ private:
     /* URI, method, file name */
     std::map<std::string, std::map<HTTPMethod, std::string>> ht;
 
+private:
+    class Connection {
+    public:
+        std::string request_buffer; /* Request data from user */
+        bool request_processing = false; 
+    };
+
+    std::unordered_map<int, Connection> connections; /* Store all connections here: socket fd -> connection */
+
 public:
     class HTTPresp {
     public:
@@ -70,6 +79,8 @@ public:
     void HTTPResponse(net::fd_t fd_t, const std::string& fileName, HTTPresp& req);                /* Parse HTTP request for HTML page */
     int switchHttp(net::fd_t fd_t, HTTPresp& req, const config::config_parser& config);     /* Analyze http request */
     void page404Http(net::fd_t fd_t, HTTPresp& req, const config::config_parser& config);   /* Display 404 */
+
+    bool isHttpRequestComplete(const std::string& buffer);
 
     net::tcp_server tcp_server; /* Transport level */
 
