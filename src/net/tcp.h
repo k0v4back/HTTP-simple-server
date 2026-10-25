@@ -7,10 +7,18 @@
 #include <list>
 #include <sys/types.h>
 
-#include "../net.h"
+#include "tcp.h"
 
 namespace net
 {
+    enum connType
+    {
+        STREAM = 0,
+        MESSAGE
+    };
+
+    typedef int32_t fd_t;
+
     /*
      * TCP server connection info
      */

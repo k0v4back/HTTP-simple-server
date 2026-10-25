@@ -2,7 +2,7 @@
 #include <fstream>
 #include <regex>
 
-#include "../include/config_parser.h"
+#include "config_parser.h"
 
 namespace config
 {

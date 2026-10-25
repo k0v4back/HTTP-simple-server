@@ -1,11 +1,11 @@
-#include "../include/tcp.h"
-
 #include <cstdint>
 #include <cstring>
 #include <fcntl.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+
+#include "tcp.h"
 
 namespace net
 {

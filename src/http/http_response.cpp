@@ -3,7 +3,7 @@
 #include <string>
 #include <map>
 
-#include "../include/http_response.h"
+#include "http_response.h"
 
 const std::string& Response::getBody() const {
     return this->body;

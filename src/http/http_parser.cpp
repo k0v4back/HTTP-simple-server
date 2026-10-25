@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-#include "../include/http_parser.h"
+#include "http_parser.h"
 
 std::string FromHTTPMethodToString(HTTPMethod method) {
     switch (method) {

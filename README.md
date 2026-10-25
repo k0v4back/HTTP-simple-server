@@ -13,24 +13,21 @@ git submodule update --init --recursive
 
 ### Debug:
 ```bash
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Debug ../
-cmake --build . --config Debug
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j$(nproc)
 ```
 
 ### Release:
 ```bash
 mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ../
-cmake --build . --config Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
 ```
 
 ## Run
 
 ```
-./http_server
+./build/bin/http_server
 ```
 
 And enter the address in the web browser: `http://127.0.0.1:7373`

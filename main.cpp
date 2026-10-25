@@ -2,10 +2,9 @@
 #include <cstring>
 #include <memory>
 
-#include "src/http.h"
-#include "src/http_parser/include/http_parser.h"
-#include "src/config_parser/include/config_parser.h"
-#include "src/net/net.h"
+#include "http/http_parser.h"
+#include "server/http_server.h"
+#include "config/config_parser.h"
 
 #include "libs/Thread-pool/include/thread_pool.h"
 

@@ -4,14 +4,16 @@
 #include <cstring>
 #include <string>
 #include <unordered_map>
+#include <map>
 #include <vector>
 #include <mutex>
 
-#include "../libs/Thread-pool/include/thread_pool.h"
-#include "http_parser/include/http_parser.h"
-#include "config_parser/include/config_parser.h"
+#include "thread_pool.h"
 
-#include "net/include/tcp.h"
+#include "http/http_response.h"
+#include "http/http_parser.h"
+#include "net/tcp.h"
+#include "config/config_parser.h"
 
 #define METHOD_SIZE 16
 #define PATH_SIZE 2048
